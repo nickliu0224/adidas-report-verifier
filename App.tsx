@@ -203,9 +203,10 @@ export default function App() {
       )}
 
       <header className="bg-black text-white px-6 py-4 flex items-center shadow-lg sticky top-0 z-50">
-        {/* Left: Brand */}
-        <div className="w-1/4 flex items-center font-bold text-lg">
-          <span className="bg-white text-black p-1 rounded">ADS</span>
+        {/* Left: Brand & Title */}
+        <div className="w-1/4 flex items-center gap-3">
+          <span className="bg-white text-black p-1 rounded font-bold text-lg">ADS</span>
+          <span className="font-bold text-sm tracking-wide whitespace-nowrap">Report Verifier</span>
         </div>
 
         {/* Center: Controls */}
@@ -225,11 +226,10 @@ export default function App() {
           </button>
         </div>
 
-        {/* Right: Info & Account */}
+        {/* Right: Account Info */}
         <div className="w-1/4 flex flex-col items-end gap-0.5">
-          <div className="font-bold text-sm tracking-wide">Report Verifier</div>
           <div className="text-[10px] text-gray-400 font-medium truncate max-w-full">
-            {user.displayName || user.email}
+            {user.email}
           </div>
           <button 
             onClick={() => signOut(auth)} 
