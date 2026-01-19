@@ -77,10 +77,10 @@ export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [bqToken, setBqToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState<{ platform: string, step: number, total: number } | null>(null);
   const [results, setResults] = useState<PlatformResult[] | null>(null);
   const [activePlatform, setActivePlatform] = useState<Platform>(Platform.BRAND_SITE);
   const [targetDate, setTargetDate] = useState<string>(new Date().toISOString().split('T')[0]);
-  const [view, setView] = useState<'DASHBOARD' | 'HISTORY'>('DASHBOARD');
 
   useEffect(() => {
      const unsubscribe = auth.onAuthStateChanged((u) => {
@@ -101,11 +101,17 @@ export default function App() {
   const handleRunCheck = async () => {
     if (!bqToken) return alert("Session expired. Please Re-login.");
     setLoading(true);
+    setResults(null);
     try {
-      const data = await runReconciliation(targetDate, bqToken);
+      const data = await runReconciliation(targetDate, bqToken, (platform, step, total) => {
+          setProgress({ platform, step, total });
+      });
       setResults(data);
     } catch (e: any) { alert(e.message); }
-    finally { setLoading(false); }
+    finally { 
+        setLoading(false); 
+        setProgress(null);
+    }
   };
 
   const activeResult = results?.find(r => r.platform === activePlatform);
@@ -130,6 +136,31 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
+      {/* Loading Overlay */}
+      {loading && (
+          <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center text-white px-4">
+              <div className="bg-zinc-900 p-8 rounded-2xl shadow-2xl max-w-xs w-full text-center border border-zinc-700 animate-in zoom-in-95 duration-200">
+                  <div className="relative w-16 h-16 mx-auto mb-6">
+                      <div className="absolute inset-0 border-4 border-zinc-800 rounded-full"></div>
+                      <div className="absolute inset-0 border-4 border-white rounded-full border-t-transparent animate-spin"></div>
+                  </div>
+                  <h3 className="text-lg font-bold mb-1">正在比對數據...</h3>
+                  {progress && (
+                      <div className="space-y-4">
+                          <p className="text-zinc-400 text-sm">Step {progress.step} of {progress.total}: <span className="text-white font-medium">{progress.platform}</span></p>
+                          <div className="w-full bg-zinc-800 h-1.5 rounded-full overflow-hidden">
+                              <div 
+                                  className="bg-white h-full transition-all duration-300 ease-out" 
+                                  style={{ width: `${(progress.step / progress.total) * 100}%` }}
+                              ></div>
+                          </div>
+                      </div>
+                  )}
+                  <p className="mt-6 text-[10px] text-zinc-500 uppercase tracking-widest font-mono">Fetching BigQuery raw logs</p>
+              </div>
+          </div>
+      )}
+
       <header className="bg-black text-white px-6 py-4 flex justify-between items-center shadow-lg sticky top-0 z-50">
         <div className="flex items-center gap-3 font-bold text-lg"><span className="bg-white text-black p-1 rounded">AD</span> Verifier</div>
         <div className="flex items-center gap-4">
@@ -153,7 +184,7 @@ export default function App() {
             </div>
 
             {activeResult && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in duration-300">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
                 {/* Shipment Section */}
                 <div className="space-y-4">
                   <Card className="p-5 border-t-4 border-t-blue-500">
@@ -173,7 +204,7 @@ export default function App() {
                     </div>
                     {activeResult.shipment.sourceCounts?.eod === 0 && activeResult.shipment.sourceCounts?.report === 0 && (
                         <div className="mt-4 p-2 bg-yellow-50 text-yellow-700 text-xs rounded border border-yellow-100 flex items-center gap-2">
-                            ⚠️ 查無數據，請確認日期或 BigQuery 權限。
+                            ⚠️ 該日期查無出貨數據。
                         </div>
                     )}
                   </Card>
@@ -199,7 +230,7 @@ export default function App() {
                     </div>
                     {activeResult.return.sourceCounts?.eod === 0 && activeResult.return.sourceCounts?.report === 0 && (
                         <div className="mt-4 p-2 bg-yellow-50 text-yellow-700 text-xs rounded border border-yellow-100 flex items-center gap-2">
-                            ⚠️ 查無數據，請確認日期或 BigQuery 權限。
+                            ⚠️ 該日期查無退貨數據。
                         </div>
                     )}
                   </Card>

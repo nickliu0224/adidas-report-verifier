@@ -24,15 +24,10 @@ const runBigQueryQuery = async (sql: string, accessToken: string) => {
   if (!response.ok) {
     const err = await response.json();
     console.error("[BigQuery API Error]", err);
-    if (response.status === 403) {
-        throw new Error(`權限不足 (403): 請確保您的 Google 帳號擁有專案 ${PROJECT_ID} 的存取權限。`);
-    }
     throw new Error(err.error?.message || 'BigQuery Request Failed');
   }
 
   const data = await response.json();
-  console.log("[BigQuery Raw Response]", data);
-
   if (!data.rows) return [];
 
   const schema = data.schema.fields;
@@ -86,7 +81,7 @@ const runComparison = (
         status = 'MISSING_RIGHT';
     } else if (leftVal === 0 && rightVal !== 0) {
         status = 'MISSING_LEFT';
-    } else if (leftVal !== 0 && rightVal !== 0 && Math.abs(diff) > 2) {
+    } else if (leftVal !== 0 && rightVal !== 0 && Math.abs(diff) > 5) { // 同步 Python: abs > 5
         status = 'DIFF';
     }
 
@@ -107,7 +102,7 @@ const runComparison = (
 
   let overallStatus: 'OK'|'WARNING'|'ERROR' = 'OK';
   if (unmatchedCount > 0 || diffCount > 0) overallStatus = 'WARNING';
-  if (unmatchedCount > 10 || diffCount > 10) overallStatus = 'ERROR';
+  if (unmatchedCount > 5 || diffCount > 5) overallStatus = 'ERROR';
 
   return {
     status: overallStatus,
@@ -118,7 +113,11 @@ const runComparison = (
   };
 };
 
-export const runReconciliation = async (date: string, accessToken: string): Promise<PlatformResult[]> => {
+export const runReconciliation = async (
+    date: string, 
+    accessToken: string, 
+    onProgress?: (platform: string, step: number, total: number) => void
+): Promise<PlatformResult[]> => {
   const targetDate = new Date(date);
   const nextDate = new Date(targetDate);
   nextDate.setDate(targetDate.getDate() + 1);
@@ -126,7 +125,10 @@ export const runReconciliation = async (date: string, accessToken: string): Prom
 
   const results: PlatformResult[] = [];
 
-  for (const platform of TARGET_PLATFORMS) {
+  for (let i = 0; i < TARGET_PLATFORMS.length; i++) {
+    const platform = TARGET_PLATFORMS[i];
+    if (onProgress) onProgress(platform, i + 1, TARGET_PLATFORMS.length);
+
     let id_expr = "", eod_id_expr = "", ship_join = "";
     
     if (platform === Platform.YAHOO) {
@@ -141,49 +143,62 @@ export const runReconciliation = async (date: string, accessToken: string): Prom
         id_expr = "ShipData.SalesOrderCode";
         eod_id_expr = "SalesOrderCode";
         ship_join = `(ShipData.Platform = 'SHOPEE' AND ShipData.SalesOrderCode = EODData.SalesOrderCode)`;
-    } else { // BRAND_SITE
+    } else { // BRAND_SITE (品牌官網)
         id_expr = "ShipData.TgOrderCode";
         eod_id_expr = "SalesOrderCode";
         ship_join = `(ShipData.Platform = '品牌官網' AND ShipData.TotalPayment = EODData.Qty * EODData.RRP - EODData.DiscountPrice)`;
     }
 
+    // --- 出貨 SQL (同步 Python main() 中的語法) ---
     const ship_sales_sql = `
     WITH ShipData_Agg AS (
-        SELECT Platform, SalesOrderCode, TgOrderCode, SkuId, TransactionCode,
-               SUM(TotalPayment) as TotalPayment
+        SELECT ShopId, Platform, SalesOrderCode, TgOrderCode, TransactionCode, SkuId, ShippingDateTime, OrderCode,
+               SUM(TotalPayment) as TotalPayment, SUM(Qty) as Qty 
         FROM \`${PROJECT_ID}.${DATASET_ID}.ShipData_ht\`
         WHERE ShopId = 41571 AND Platform = '${platform}'
             AND EXTRACT(DATE FROM ShippingDatetime) = DATE('${date}')
             AND SalesOrderStatus = '已出貨' AND TotalPayment != 0 
-        GROUP BY 1,2,3,4,5
+        GROUP BY 1,2,3,4,5,6,7,8
     )
     SELECT ${id_expr} AS TG_ID, STRING_AGG(DISTINCT ShipData.SalesOrderCode, ', ') AS TS_IDs,
-        CAST(ROUND(SUM(ShipData.TotalPayment) / 1.05) AS INT64) AS OrderAmount
+        CAST(ROUND(SUM(CASE WHEN CAST((EODData.Qty * EODData.RRP - EODData.DiscountPrice) AS INT64) < 0
+            THEN CAST((EODData.Qty * EODData.RRP - EODData.DiscountPrice) AS INT64) * -1
+            ELSE CAST((EODData.Qty * EODData.RRP - EODData.DiscountPrice) AS INT64) END) / 1.05) AS INT64) AS OrderAmount
     FROM ShipData_Agg AS ShipData
+    LEFT JOIN \`${PROJECT_ID}.${DATASET_ID}.Adidas_EOD_Data_ht\` AS EODData
+    ON ShipData.SkuId = CONCAT(EODData.ArticleNo, EODData.SizeIndex) AND ShipData.Platform = EODData.Platform
+       AND EODData.Qty > 0 AND EODData.BQUpdatedDateTime >= TIMESTAMP('${date}') AND EODData.BQUpdatedDateTime < TIMESTAMP('${nextDayStr}')
+       AND ${ship_join}
+    AND ShipData.TransactionCode = IF(INSTR(EODData.TransactionCode, '-') > 0, SPLIT(EODData.TransactionCode, '-')[OFFSET(0)], EODData.TransactionCode)
     GROUP BY 1
     `;
 
-    let ret_join = ship_join;
-    if (platform === Platform.BRAND_SITE) {
-        ret_join = `(ShipData.Platform = '品牌官網' AND (ShipData.TransactionCode = REPLACE(IF(INSTR(EODData.TransactionCode, '-') > 0, SPLIT(EODData.TransactionCode, '-')[OFFSET(0)], EODData.TransactionCode), 'R', '') OR ShipData.TransactionCode = IF(INSTR(EODData.TransactionCode, '-') > 0, SPLIT(EODData.TransactionCode, '-')[OFFSET(0)], EODData.TransactionCode)))`;
-    }
-
+    // --- 退貨 SQL (同步 Python main() 中的語法) ---
+    const ret_join = platform !== Platform.BRAND_SITE 
+        ? ship_join 
+        : `(ShipData.Platform = '品牌官網' AND (ShipData.TransactionCode = REPLACE(IF(INSTR(EODData.TransactionCode, '-') > 0, SPLIT(EODData.TransactionCode, '-')[OFFSET(0)], EODData.TransactionCode), 'R', '') OR ShipData.TransactionCode = IF(INSTR(EODData.TransactionCode, '-') > 0, SPLIT(EODData.TransactionCode, '-')[OFFSET(0)], EODData.TransactionCode)) AND ABS(ShipData.TotalPayment - (EODData.Qty * EODData.RRP + EODData.DiscountPrice)) < 1)`;
+    
     const ret_sales_sql = `
     WITH ShipData_Ret AS (
-        SELECT Platform, SalesOrderCode, TransactionCode, SkuId,
-               SUM(TotalPayment) as TotalPayment
+        SELECT ShopId, Platform, SalesOrderCode, TransactionCode, SkuId, ShippingDateTime, OrderCode,
+               SUM(TotalPayment) as TotalPayment, SUM(Qty) as Qty 
         FROM \`${PROJECT_ID}.${DATASET_ID}.ShipData_ht\`
         WHERE ShopId = 41571 AND Platform = '${platform}'
             AND EXTRACT(DATE FROM ReturnStatusUpdatedDateTime) = DATE('${date}')
             AND SalesOrderStatus IN ('退貨結案', '出貨失敗結案') AND TotalPayment != 0 
-        GROUP BY 1,2,3,4
+        GROUP BY 1,2,3,4,5,6,7
     )
     SELECT ${platform !== Platform.BRAND_SITE ? id_expr : 'ShipData.SalesOrderCode'} AS TS_ID,
-        CAST(ROUND(SUM(ShipData.TotalPayment) / 1.05) AS INT64) AS RetAmount
+        CAST(ROUND(SUM(EODData.Qty * EODData.RRP + EODData.DiscountPrice) / 1.05) AS INT64) AS RetAmount
     FROM ShipData_Ret AS ShipData
+    LEFT JOIN \`${PROJECT_ID}.${DATASET_ID}.Adidas_EOD_Data_ht\` AS EODData
+    ON ShipData.SkuId = CONCAT(EODData.ArticleNo, EODData.SizeIndex) AND ShipData.Platform = EODData.Platform
+       AND EODData.Qty < 0 AND EODData.BQUpdatedDateTime >= TIMESTAMP('${date}') AND EODData.BQUpdatedDateTime < TIMESTAMP('${nextDayStr}')
+       AND ${ret_join}
     GROUP BY 1
     `;
 
+    // --- EOD 基礎 SQL ---
     const ship_eod_sql = `SELECT ${eod_id_expr} AS TG_ID, CAST(ROUND(SUM(Qty * RRP - DiscountPrice) / 1.05) AS INT64) AS EOD_Amount FROM \`${PROJECT_ID}.${DATASET_ID}.Adidas_EOD_Data_ht\` WHERE BQUpdatedDateTime >= TIMESTAMP('${date}') AND BQUpdatedDateTime < TIMESTAMP('${nextDayStr}') AND Platform = '${platform}' AND Qty > 0 GROUP BY 1`;
     const ret_eod_sql = `SELECT ${platform !== Platform.BRAND_SITE ? eod_id_expr : 'SalesOrderCode'} AS TS_ID, CAST(ROUND(SUM(Qty * RRP + DiscountPrice) / 1.05) AS INT64) AS EOD_RetAmount FROM \`${PROJECT_ID}.${DATASET_ID}.Adidas_EOD_Data_ht\` WHERE BQUpdatedDateTime >= TIMESTAMP('${date}') AND BQUpdatedDateTime < TIMESTAMP('${nextDayStr}') AND Platform = '${platform}' AND Qty < 0 GROUP BY 1`;
 
