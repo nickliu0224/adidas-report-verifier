@@ -1,6 +1,0 @@
-flask
-flask-cors
-google-cloud-bigquery
-pandas
-gunicorn
-pyarrow
