@@ -9,9 +9,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "react-dom": "18.2.0",
     "react": "18.2.0",
-    "firebase": "10.13.1"
+    "react-dom": "^19.2.3",
+    "firebase": "^12.8.0"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
