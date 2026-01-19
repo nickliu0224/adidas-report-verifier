@@ -129,11 +129,15 @@ export default function App() {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
         <div className="bg-white p-10 rounded-2xl shadow-xl max-w-sm w-full text-center border border-gray-100">
-           <div className="w-16 h-16 bg-black text-white rounded-full flex items-center justify-center mx-auto mb-6">
-              <svg className="w-10 h-10 fill-current" viewBox="0 0 50 32"><path d="M36.1 4.2L25.3 22.9 22.2 21.1 34.6 0l15.3 26.5h-6.2L36.1 4.2zM21.7 8.3L13.4 22.8 10.3 21 20.2 4.1 33 26.5h-6.2L21.7 8.3zM7.2 12.5L1.5 22.8H8l2.5-4.4L15.3 26.5H9.2l-2-3.4-2.1 3.4H-.9l8.1-14z"/></svg>
+           <div className="w-20 h-20 bg-[#007cc2] rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg overflow-hidden">
+              <img 
+                src="https://upload.wikimedia.org/wikipedia/commons/thumb/2/20/Adidas_Logo.svg/1024px-Adidas_Logo.svg.png" 
+                className="w-14 h-14 object-contain brightness-0 invert" 
+                alt="Adidas Logo" 
+              />
            </div>
-           <h1 className="text-2xl font-bold mb-2">ADS report verifier</h1>
-           <p className="text-gray-400 mb-8 text-sm">Accessing BigQuery tw dataset...</p>
+           <h1 className="text-2xl font-bold mb-2">ADS Report Verifier</h1>
+           <p className="text-gray-400 mb-8 text-sm">登入前請確認你有 BQ 權限</p>
            <button onClick={handleLogin} className="w-full flex items-center justify-center gap-3 bg-white border border-gray-300 py-3 rounded-lg hover:bg-gray-50 font-medium transition-all">
              <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-5 h-5" alt=""/>
              Login with Google
