@@ -85,6 +85,7 @@ export default function App() {
   const [results, setResults] = useState<PlatformResult[] | null>(null);
   const [activePlatform, setActivePlatform] = useState<Platform>(Platform.BRAND_SITE);
   const [targetDate, setTargetDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
      const unsubscribe = auth.onAuthStateChanged((u) => {
@@ -106,12 +107,16 @@ export default function App() {
     if (!bqToken) return alert("Session expired. Please Re-login.");
     setLoading(true);
     setResults(null);
+    setErrorMsg(null);
     try {
       const data = await runReconciliation(targetDate, bqToken, (platform, step, total) => {
           setProgress({ platform, step, total });
       });
       setResults(data);
-    } catch (e: any) { alert(e.message); }
+    } catch (e: any) { 
+      setErrorMsg(e.message);
+      alert(e.message); 
+    }
     finally { 
         setLoading(false); 
         setProgress(null);
@@ -134,12 +139,13 @@ export default function App() {
              Login with Google
            </button>
         </div>
+        <footer className="mt-8 text-gray-400 text-xs">Made by IS PM Nick</footer>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Loading Overlay */}
       {loading && (
           <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center text-white px-4">
@@ -176,7 +182,14 @@ export default function App() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto p-6 mt-4">
+      <main className="max-w-7xl mx-auto p-6 mt-4 flex-grow w-full">
+        {errorMsg && (
+          <div className="mb-6 p-4 bg-red-100 border border-red-200 text-red-700 rounded-lg flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
+            <svg className="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" /></svg>
+            <span className="font-bold">{errorMsg}</span>
+          </div>
+        )}
+
         {results ? (
           <div className="space-y-6">
             <div className="flex gap-2 overflow-x-auto pb-2">
@@ -206,11 +219,6 @@ export default function App() {
                             <div className="text-2xl font-bold text-indigo-900">{activeResult.shipment.sourceCounts?.report}</div>
                         </div>
                     </div>
-                    {activeResult.shipment.sourceCounts?.eod === 0 && activeResult.shipment.sourceCounts?.report === 0 && (
-                        <div className="mt-4 p-2 bg-yellow-50 text-yellow-700 text-xs rounded border border-yellow-100 flex items-center gap-2">
-                            ⚠️ 該日期查無出貨數據。
-                        </div>
-                    )}
                   </Card>
                   <Card><DetailTable details={activeResult.shipment.details} type="Shipment" platform={activePlatform} /></Card>
                 </div>
@@ -232,11 +240,6 @@ export default function App() {
                             <div className="text-2xl font-bold text-rose-900">{activeResult.return.sourceCounts?.report}</div>
                         </div>
                     </div>
-                    {activeResult.return.sourceCounts?.eod === 0 && activeResult.return.sourceCounts?.report === 0 && (
-                        <div className="mt-4 p-2 bg-yellow-50 text-yellow-700 text-xs rounded border border-yellow-100 flex items-center gap-2">
-                            ⚠️ 該日期查無退貨數據。
-                        </div>
-                    )}
                   </Card>
                   <Card><DetailTable details={activeResult.return.details} type="Return" platform={activePlatform} /></Card>
                 </div>
@@ -250,6 +253,10 @@ export default function App() {
           </div>
         )}
       </main>
+
+      <footer className="w-full py-8 text-center text-gray-400 text-sm border-t border-gray-100 mt-auto bg-white">
+        Made by IS PM Nick
+      </footer>
     </div>
   );
 }

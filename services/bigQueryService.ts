@@ -24,6 +24,10 @@ const runBigQueryQuery = async (sql: string, accessToken: string) => {
   if (!response.ok) {
     const err = await response.json();
     console.error("[BigQuery API Error]", err);
+    // 針對權限不足 (403) 提供特定中文提示
+    if (response.status === 403) {
+      throw new Error("你的帳號沒有查 BQ 的權限啦");
+    }
     throw new Error(err.error?.message || 'BigQuery Request Failed');
   }
 
@@ -224,6 +228,10 @@ export const runReconciliation = async (
             return: { status: 'ERROR', unmatchedCount: 0, diffCount: 0, details: [], sourceCounts: {eod: 0, report: 0} },
             processedAt: new Date().toISOString()
         });
+        // 如果是特定的權限錯誤，則向上拋出
+        if (e.message === "你的帳號沒有查 BQ 的權限啦") {
+          throw e;
+        }
     }
   }
   return results;
