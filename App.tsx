@@ -109,7 +109,6 @@ export default function App() {
       const result = await signInWithPopup(auth, googleProvider);
       const email = result.user.email;
       
-      // 網域檢查邏輯
       if (!email?.endsWith('@91app.com') && !email?.endsWith('@nine-yi.com')) {
         await signOut(auth);
         setErrorMsg("抱歉，你的帳號不屬於 @91app.com 或 @nine-yi.com 網域，無法登入啦");
@@ -203,14 +202,41 @@ export default function App() {
           </div>
       )}
 
-      <header className="bg-black text-white px-6 py-4 flex justify-between items-center shadow-lg sticky top-0 z-50">
-        <div className="flex items-center gap-3 font-bold text-lg"><span className="bg-white text-black p-1 rounded">ADS</span> report verifier</div>
-        <div className="flex items-center gap-4">
-          <input type="date" value={targetDate} onChange={e => setTargetDate(e.target.value)} className="bg-gray-800 border-none rounded px-3 py-1 text-sm outline-none focus:ring-1 focus:ring-white"/>
-          <button onClick={handleRunCheck} disabled={loading} className="bg-white text-black px-4 py-1 rounded text-sm font-bold hover:bg-gray-200 disabled:opacity-50">
+      <header className="bg-black text-white px-6 py-4 flex items-center shadow-lg sticky top-0 z-50">
+        {/* Left: Brand */}
+        <div className="w-1/4 flex items-center font-bold text-lg">
+          <span className="bg-white text-black p-1 rounded">ADS</span>
+        </div>
+
+        {/* Center: Controls */}
+        <div className="w-2/4 flex justify-center items-center gap-4">
+          <input 
+            type="date" 
+            value={targetDate} 
+            onChange={e => setTargetDate(e.target.value)} 
+            className="bg-gray-800 border-none rounded px-3 py-1.5 text-sm outline-none focus:ring-1 focus:ring-white min-w-[150px]"
+          />
+          <button 
+            onClick={handleRunCheck} 
+            disabled={loading} 
+            className="bg-white text-black px-6 py-1.5 rounded text-sm font-bold hover:bg-gray-200 disabled:opacity-50 transition-colors"
+          >
             {loading ? 'Running...' : 'Run'}
           </button>
-          <button onClick={() => signOut(auth)} className="text-xs text-gray-400 hover:text-white">Logout</button>
+        </div>
+
+        {/* Right: Info & Account */}
+        <div className="w-1/4 flex flex-col items-end gap-0.5">
+          <div className="font-bold text-sm tracking-wide">Report Verifier</div>
+          <div className="text-[10px] text-gray-400 font-medium truncate max-w-full">
+            {user.displayName || user.email}
+          </div>
+          <button 
+            onClick={() => signOut(auth)} 
+            className="text-[10px] text-gray-500 hover:text-white underline transition-colors"
+          >
+            Logout
+          </button>
         </div>
       </header>
 
