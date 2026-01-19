@@ -44,7 +44,7 @@ const DetailTable = ({ details, type, platform }: { details: ComparisonRow[]; ty
   if (isBrandSite) idLabel = type === 'Shipment' ? 'TG 單號' : 'TS 單號';
 
   return (
-    <div className="overflow-x-auto max-h-96">
+    <div className="overflow-x-auto max-h-[500px]">
       <table className="min-w-full divide-y divide-gray-200 relative">
         <thead className="bg-gray-50 sticky top-0 z-10 shadow-sm">
           <tr>
@@ -60,7 +60,11 @@ const DetailTable = ({ details, type, platform }: { details: ComparisonRow[]; ty
           {details.map((row) => (
             <tr key={row.key} className="hover:bg-gray-50 font-mono text-sm">
               <td className="px-6 py-4 whitespace-nowrap text-gray-900">{row.key}</td>
-              {isBrandSite && type === 'Shipment' && <td className="px-6 py-4 whitespace-nowrap text-xs text-gray-400 max-w-[120px] truncate" title={row.tsIds}>{row.tsIds || '-'}</td>}
+              {isBrandSite && type === 'Shipment' && (
+                <td className="px-6 py-4 text-xs text-gray-500 break-all font-sans">
+                  {row.tsIds || '-'}
+                </td>
+              )}
               <td className="px-6 py-4 whitespace-nowrap text-right text-gray-500">{row.leftValue?.toLocaleString()}</td>
               <td className="px-6 py-4 whitespace-nowrap text-right text-gray-500">{row.rightValue?.toLocaleString()}</td>
               <td className={`px-6 py-4 whitespace-nowrap text-right font-bold ${row.diff !== 0 ? 'text-red-600' : 'text-gray-400'}`}>{row.diff}</td>
@@ -123,7 +127,7 @@ export default function App() {
            <div className="w-16 h-16 bg-black text-white rounded-full flex items-center justify-center mx-auto mb-6">
               <svg className="w-10 h-10 fill-current" viewBox="0 0 50 32"><path d="M36.1 4.2L25.3 22.9 22.2 21.1 34.6 0l15.3 26.5h-6.2L36.1 4.2zM21.7 8.3L13.4 22.8 10.3 21 20.2 4.1 33 26.5h-6.2L21.7 8.3zM7.2 12.5L1.5 22.8H8l2.5-4.4L15.3 26.5H9.2l-2-3.4-2.1 3.4H-.9l8.1-14z"/></svg>
            </div>
-           <h1 className="text-2xl font-bold mb-2">Adidas Verifier</h1>
+           <h1 className="text-2xl font-bold mb-2">ADS report verifier</h1>
            <p className="text-gray-400 mb-8 text-sm">Accessing BigQuery tw dataset...</p>
            <button onClick={handleLogin} className="w-full flex items-center justify-center gap-3 bg-white border border-gray-300 py-3 rounded-lg hover:bg-gray-50 font-medium transition-all">
              <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-5 h-5" alt=""/>
@@ -162,7 +166,7 @@ export default function App() {
       )}
 
       <header className="bg-black text-white px-6 py-4 flex justify-between items-center shadow-lg sticky top-0 z-50">
-        <div className="flex items-center gap-3 font-bold text-lg"><span className="bg-white text-black p-1 rounded">AD</span> Verifier</div>
+        <div className="flex items-center gap-3 font-bold text-lg"><span className="bg-white text-black p-1 rounded">ADS</span> report verifier</div>
         <div className="flex items-center gap-4">
           <input type="date" value={targetDate} onChange={e => setTargetDate(e.target.value)} className="bg-gray-800 border-none rounded px-3 py-1 text-sm outline-none focus:ring-1 focus:ring-white"/>
           <button onClick={handleRunCheck} disabled={loading} className="bg-white text-black px-4 py-1 rounded text-sm font-bold hover:bg-gray-200 disabled:opacity-50">
@@ -184,22 +188,22 @@ export default function App() {
             </div>
 
             {activeResult && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
+              <div className="flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
                 {/* Shipment Section */}
                 <div className="space-y-4">
-                  <Card className="p-5 border-t-4 border-t-blue-500">
+                  <Card className="p-5 border-t-4 border-t-blue-500 bg-blue-50/20">
                     <div className="flex justify-between items-start mb-4">
-                        <h3 className="font-bold text-gray-700">出貨比對 (Shipment)</h3>
+                        <h3 className="font-bold text-gray-700 text-lg">出貨比對 (Shipment)</h3>
                         <Badge status={activeResult.shipment.status} />
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="bg-blue-50 p-3 rounded-lg text-center">
-                            <div className="text-xs text-blue-600 font-bold uppercase">EOD 筆數</div>
-                            <div className="text-xl font-bold text-blue-900">{activeResult.shipment.sourceCounts?.eod}</div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl">
+                        <div className="bg-blue-50 p-3 rounded-lg text-center border border-blue-100">
+                            <div className="text-xs text-blue-600 font-bold uppercase mb-1">EOD 筆數</div>
+                            <div className="text-2xl font-bold text-blue-900">{activeResult.shipment.sourceCounts?.eod}</div>
                         </div>
-                        <div className="bg-indigo-50 p-3 rounded-lg text-center">
-                            <div className="text-xs text-indigo-600 font-bold uppercase">報表筆數</div>
-                            <div className="text-xl font-bold text-indigo-900">{activeResult.shipment.sourceCounts?.report}</div>
+                        <div className="bg-indigo-50 p-3 rounded-lg text-center border border-indigo-100">
+                            <div className="text-xs text-indigo-600 font-bold uppercase mb-1">報表筆數</div>
+                            <div className="text-2xl font-bold text-indigo-900">{activeResult.shipment.sourceCounts?.report}</div>
                         </div>
                     </div>
                     {activeResult.shipment.sourceCounts?.eod === 0 && activeResult.shipment.sourceCounts?.report === 0 && (
@@ -213,19 +217,19 @@ export default function App() {
 
                 {/* Return Section */}
                 <div className="space-y-4">
-                  <Card className="p-5 border-t-4 border-t-orange-500">
+                  <Card className="p-5 border-t-4 border-t-red-500 bg-red-50/20">
                     <div className="flex justify-between items-start mb-4">
-                        <h3 className="font-bold text-gray-700">退貨比對 (Return)</h3>
+                        <h3 className="font-bold text-gray-700 text-lg">退貨比對 (Return)</h3>
                         <Badge status={activeResult.return.status} />
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="bg-orange-50 p-3 rounded-lg text-center">
-                            <div className="text-xs text-orange-600 font-bold uppercase">EOD 筆數</div>
-                            <div className="text-xl font-bold text-orange-900">{activeResult.return.sourceCounts?.eod}</div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl">
+                        <div className="bg-red-50 p-3 rounded-lg text-center border border-red-100">
+                            <div className="text-xs text-red-600 font-bold uppercase mb-1">EOD 筆數</div>
+                            <div className="text-2xl font-bold text-red-900">{activeResult.return.sourceCounts?.eod}</div>
                         </div>
-                        <div className="bg-red-50 p-3 rounded-lg text-center">
-                            <div className="text-xs text-red-600 font-bold uppercase">報表筆數</div>
-                            <div className="text-xl font-bold text-red-900">{activeResult.return.sourceCounts?.report}</div>
+                        <div className="bg-rose-50 p-3 rounded-lg text-center border border-rose-100">
+                            <div className="text-xs text-rose-600 font-bold uppercase mb-1">報表筆數</div>
+                            <div className="text-2xl font-bold text-rose-900">{activeResult.return.sourceCounts?.report}</div>
                         </div>
                     </div>
                     {activeResult.return.sourceCounts?.eod === 0 && activeResult.return.sourceCounts?.report === 0 && (
