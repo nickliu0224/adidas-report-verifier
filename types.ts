@@ -6,11 +6,11 @@ export enum Platform {
 }
 
 export interface ComparisonRow {
-    key: string;          // The join key (TG Code for Brand Ship, TS Code for Brand Return, OrderCode for others)
-    leftValue?: number;   // EOD Amount (Qty * RRP - Discount)
-    rightValue?: number;  // Report Amount (TotalPayment)
+    key: string;          // The join key
+    leftValue?: number;   // EOD Amount
+    rightValue?: number;  // Report Amount
     diff: number;         // rightValue - leftValue
-    tsIds?: string;       // For Brand Site Shipment: List of TS IDs
+    tsIds?: string;       
     status: 'MATCH' | 'MISSING_LEFT' | 'MISSING_RIGHT' | 'DIFF';
 }
 
@@ -21,26 +21,27 @@ export interface PlatformResult {
         unmatchedCount: number;
         diffCount: number;
         details: ComparisonRow[];
+        sourceCounts?: { eod: number; report: number }; // 新增統計
     };
     return: {
         status: 'OK' | 'WARNING' | 'ERROR';
         unmatchedCount: number;
         diffCount: number;
         details: ComparisonRow[];
+        sourceCounts?: { eod: number; report: number }; // 新增統計
     };
     processedAt: string;
 }
 
-// Data structures for the Mock Service simulation
 export interface EODRow {
-    id: string; // TG_ID or SalesOrderCode
+    id: string;
     amount: number;
     platform: Platform;
 }
 
 export interface ReportRow {
-    id: string; // TG_ID or SalesOrderCode
+    id: string;
     amount: number;
     platform: Platform;
-    tsIds?: string; // Only for Brand Site Shipment
+    tsIds?: string;
 }

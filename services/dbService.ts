@@ -1,3 +1,4 @@
+
 import { db } from './firebase';
 import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, orderBy, Timestamp } from 'firebase/firestore';
 import { PlatformResult } from '../types';
@@ -37,10 +38,14 @@ export const getHistory = async (): Promise<SavedReport[]> => {
     try {
         const q = query(collection(db, COLLECTION_NAME), orderBy('runAt', 'desc'));
         const querySnapshot = await getDocs(q);
-        return querySnapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-        } as SavedReport));
+        return querySnapshot.docs.map(doc => {
+            // Fix: Cast doc.data() to Record<string, any> to resolve the spread type error for DocumentData.
+            const data = doc.data() as Record<string, any>;
+            return {
+                id: doc.id,
+                ...data
+            } as SavedReport;
+        });
     } catch (error) {
         console.error("Error fetching history: ", error);
         throw error;
