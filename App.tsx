@@ -89,6 +89,14 @@ export default function App() {
 
   useEffect(() => {
      const unsubscribe = auth.onAuthStateChanged((u) => {
+         if (u && u.email) {
+           const email = u.email;
+           if (!email.endsWith('@91app.com') && !email.endsWith('@nine-yi.com')) {
+             signOut(auth);
+             setErrorMsg("抱歉，你的帳號不屬於 @91app.com 或 @nine-yi.com 網域，無法登入啦");
+             return;
+           }
+         }
          setUser(u);
          if (!u) setBqToken(null);
      });
@@ -96,8 +104,18 @@ export default function App() {
   }, []);
 
   const handleLogin = async () => {
+    setErrorMsg(null);
     try {
       const result = await signInWithPopup(auth, googleProvider);
+      const email = result.user.email;
+      
+      // 網域檢查邏輯
+      if (!email?.endsWith('@91app.com') && !email?.endsWith('@nine-yi.com')) {
+        await signOut(auth);
+        setErrorMsg("抱歉，你的帳號不屬於 @91app.com 或 @nine-yi.com 網域，無法登入啦");
+        return;
+      }
+
       const credential = GoogleAuthProvider.credentialFromResult(result);
       if (credential?.accessToken) setBqToken(credential.accessToken);
     } catch (e: any) { alert(`Login error: ${e.message}`); }
@@ -137,13 +155,23 @@ export default function App() {
               />
            </div>
            <h1 className="text-2xl font-bold mb-2">ADS Report Verifier</h1>
-           <p className="text-gray-400 mb-8 text-sm">登入前請確認你有 BQ 權限</p>
+           <p className="text-gray-400 mb-4 text-sm">登入前請確認你有 BQ 權限</p>
+           
+           {errorMsg && (
+             <div className="mb-6 p-3 bg-red-50 border border-red-100 text-red-600 text-xs rounded-lg font-medium">
+               {errorMsg}
+             </div>
+           )}
+
            <button onClick={handleLogin} className="w-full flex items-center justify-center gap-3 bg-white border border-gray-300 py-3 rounded-lg hover:bg-gray-50 font-medium transition-all">
              <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-5 h-5" alt=""/>
              Login with Google
            </button>
         </div>
-        <footer className="mt-8 text-gray-400 text-xs">Made by IS PM Nick</footer>
+        <footer className="mt-8 text-gray-400 text-xs text-center">
+          <p>Made by IS PM Nick</p>
+          <p className="mt-1 opacity-50">僅限 @91app.com / @nine-yi.com 員工登入</p>
+        </footer>
       </div>
     );
   }
