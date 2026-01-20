@@ -76,6 +76,65 @@ const DetailTable = ({ details, type, platform }: { details: ComparisonRow[]; ty
   );
 };
 
+// --- New Summary Widget ---
+const SummaryCards = ({ results, activePlatform, onSelect }: { results: PlatformResult[], activePlatform: Platform, onSelect: (p: Platform) => void }) => {
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8 animate-in fade-in slide-in-from-top-4 duration-500">
+      {results.map((r) => {
+        const shipIssues = r.shipment.diffCount + r.shipment.unmatchedCount;
+        const retIssues = r.return.diffCount + r.return.unmatchedCount;
+        const totalIssues = shipIssues + retIssues;
+        const isOk = totalIssues === 0;
+        const isActive = activePlatform === r.platform;
+
+        return (
+          <button
+            key={r.platform}
+            onClick={() => onSelect(r.platform)}
+            className={`relative p-4 rounded-xl text-left transition-all border-2 group ${
+              isActive 
+                ? 'border-black shadow-md scale-[1.02] bg-white' 
+                : 'border-transparent bg-white/60 hover:bg-white hover:border-gray-200 hover:shadow-sm'
+            }`}
+          >
+            <div className="flex justify-between items-start mb-2">
+              <span className={`text-xs font-bold uppercase tracking-wider ${isActive ? 'text-black' : 'text-gray-500'}`}>
+                {r.platform}
+              </span>
+              {isOk ? (
+                 <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center ring-4 ring-green-50">
+                    <svg className="w-3.5 h-3.5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                 </div>
+              ) : (
+                 <div className="w-6 h-6 rounded-full bg-red-100 flex items-center justify-center ring-4 ring-red-50">
+                    <svg className="w-3.5 h-3.5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                 </div>
+              )}
+            </div>
+            
+            <div className="flex items-baseline gap-1">
+               {isOk ? (
+                 <span className="text-xl font-bold text-gray-700 group-hover:text-green-600 transition-colors">All Good</span>
+               ) : (
+                 <div className="flex flex-col">
+                    <span className="text-xl font-bold text-red-600">{totalIssues} <span className="text-xs font-medium text-red-400">Issues</span></span>
+                 </div>
+               )}
+            </div>
+            
+            {!isOk && (
+              <div className="mt-2 flex flex-wrap gap-1.5 text-[10px] font-mono text-gray-500">
+                {shipIssues > 0 && <span className="bg-red-50 text-red-700 px-1.5 py-0.5 rounded border border-red-100">Ship: {shipIssues}</span>}
+                {retIssues > 0 && <span className="bg-orange-50 text-orange-700 px-1.5 py-0.5 rounded border border-orange-100">Ret: {retIssues}</span>}
+              </div>
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
+};
+
 export default function DashboardPage({ user }: { user: any }) {
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState<{ platform: string, step: number, total: number } | null>(null);
@@ -190,72 +249,81 @@ export default function DashboardPage({ user }: { user: any }) {
         )}
 
         {results ? (
-          <div className="space-y-6">
-            <div className="flex gap-2 overflow-x-auto pb-2">
-              {results.map(r => (
-                <button key={r.platform} onClick={() => setActivePlatform(r.platform)} className={`px-4 py-2 rounded-full text-xs font-bold border transition-all whitespace-nowrap ${activePlatform === r.platform ? 'bg-black text-white border-black shadow-md' : 'bg-white text-gray-500 border-gray-200'}`}>
-                  {r.platform}
-                </button>
-              ))}
-            </div>
+          <div>
+            {/* New Traffic Light Widget */}
+            <SummaryCards 
+                results={results} 
+                activePlatform={activePlatform} 
+                onSelect={setActivePlatform} 
+            />
 
-            {activeResult && (
-              <div className="flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
-                {/* Shipment Section */}
-                <div className="space-y-4">
-                  <Card className="p-5 border-t-4 border-t-blue-500 bg-blue-50/20">
-                    <div className="flex justify-between items-start mb-4">
-                        <h3 className="font-bold text-gray-700 text-lg">出貨比對 (Shipment)</h3>
-                        <Badge status={activeResult.shipment.status} />
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl">
-                        <div className="bg-blue-50 p-3 rounded-lg text-center border border-blue-100">
-                            <div className="text-xs text-blue-600 font-bold uppercase mb-1">EOD</div>
-                            <div className="text-2xl font-bold text-blue-900">{activeResult.shipment.sourceCounts?.eod} <span className="text-sm text-blue-600/70 font-normal">筆</span></div>
-                            <div className="text-sm font-semibold text-blue-800 mt-1 pt-1 border-t border-blue-200">
-                                ${activeResult.shipment.sourceAmounts?.eod?.toLocaleString()}
-                            </div>
-                        </div>
-                        <div className="bg-indigo-50 p-3 rounded-lg text-center border border-indigo-100">
-                            <div className="text-xs text-indigo-600 font-bold uppercase mb-1">報表</div>
-                            <div className="text-2xl font-bold text-indigo-900">{activeResult.shipment.sourceCounts?.report} <span className="text-sm text-indigo-600/70 font-normal">筆</span></div>
-                            <div className="text-sm font-semibold text-indigo-800 mt-1 pt-1 border-t border-indigo-200">
-                                ${activeResult.shipment.sourceAmounts?.report?.toLocaleString()}
-                            </div>
-                        </div>
-                    </div>
-                  </Card>
-                  <Card><DetailTable details={activeResult.shipment.details} type="Shipment" platform={activePlatform} /></Card>
-                </div>
-
-                {/* Return Section */}
-                <div className="space-y-4">
-                  <Card className="p-5 border-t-4 border-t-red-500 bg-red-50/20">
-                    <div className="flex justify-between items-start mb-4">
-                        <h3 className="font-bold text-gray-700 text-lg">退貨比對 (Return)</h3>
-                        <Badge status={activeResult.return.status} />
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl">
-                        <div className="bg-red-50 p-3 rounded-lg text-center border border-red-100">
-                            <div className="text-xs text-red-600 font-bold uppercase mb-1">EOD</div>
-                            <div className="text-2xl font-bold text-red-900">{activeResult.return.sourceCounts?.eod} <span className="text-sm text-red-600/70 font-normal">筆</span></div>
-                            <div className="text-sm font-semibold text-red-800 mt-1 pt-1 border-t border-red-200">
-                                ${activeResult.return.sourceAmounts?.eod?.toLocaleString()}
-                            </div>
-                        </div>
-                        <div className="bg-rose-50 p-3 rounded-lg text-center border border-rose-100">
-                            <div className="text-xs text-rose-600 font-bold uppercase mb-1">報表</div>
-                            <div className="text-2xl font-bold text-rose-900">{activeResult.return.sourceCounts?.report} <span className="text-sm text-rose-600/70 font-normal">筆</span></div>
-                            <div className="text-sm font-semibold text-rose-800 mt-1 pt-1 border-t border-rose-200">
-                                ${activeResult.return.sourceAmounts?.report?.toLocaleString()}
-                            </div>
-                        </div>
-                    </div>
-                  </Card>
-                  <Card><DetailTable details={activeResult.return.details} type="Return" platform={activePlatform} /></Card>
-                </div>
+            <div className="space-y-6">
+              <div className="flex gap-2 overflow-x-auto pb-2 border-b border-gray-100">
+                {results.map(r => (
+                  <button key={r.platform} onClick={() => setActivePlatform(r.platform)} className={`px-4 py-2 rounded-t-lg text-xs font-bold border-b-2 transition-all whitespace-nowrap ${activePlatform === r.platform ? 'border-black text-black' : 'border-transparent text-gray-400 hover:text-gray-600'}`}>
+                    {r.platform}
+                  </button>
+                ))}
               </div>
-            )}
+
+              {activeResult && (
+                <div className="flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                  {/* Shipment Section */}
+                  <div className="space-y-4">
+                    <Card className="p-5 border-t-4 border-t-blue-500 bg-blue-50/20">
+                      <div className="flex justify-between items-start mb-4">
+                          <h3 className="font-bold text-gray-700 text-lg">出貨比對 (Shipment)</h3>
+                          <Badge status={activeResult.shipment.status} />
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl">
+                          <div className="bg-blue-50 p-3 rounded-lg text-center border border-blue-100">
+                              <div className="text-xs text-blue-600 font-bold uppercase mb-1">EOD</div>
+                              <div className="text-2xl font-bold text-blue-900">{activeResult.shipment.sourceCounts?.eod} <span className="text-sm text-blue-600/70 font-normal">筆</span></div>
+                              <div className="text-sm font-semibold text-blue-800 mt-1 pt-1 border-t border-blue-200">
+                                  ${activeResult.shipment.sourceAmounts?.eod?.toLocaleString()}
+                              </div>
+                          </div>
+                          <div className="bg-indigo-50 p-3 rounded-lg text-center border border-indigo-100">
+                              <div className="text-xs text-indigo-600 font-bold uppercase mb-1">報表</div>
+                              <div className="text-2xl font-bold text-indigo-900">{activeResult.shipment.sourceCounts?.report} <span className="text-sm text-indigo-600/70 font-normal">筆</span></div>
+                              <div className="text-sm font-semibold text-indigo-800 mt-1 pt-1 border-t border-indigo-200">
+                                  ${activeResult.shipment.sourceAmounts?.report?.toLocaleString()}
+                              </div>
+                          </div>
+                      </div>
+                    </Card>
+                    <Card><DetailTable details={activeResult.shipment.details} type="Shipment" platform={activePlatform} /></Card>
+                  </div>
+
+                  {/* Return Section */}
+                  <div className="space-y-4">
+                    <Card className="p-5 border-t-4 border-t-red-500 bg-red-50/20">
+                      <div className="flex justify-between items-start mb-4">
+                          <h3 className="font-bold text-gray-700 text-lg">退貨比對 (Return)</h3>
+                          <Badge status={activeResult.return.status} />
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl">
+                          <div className="bg-red-50 p-3 rounded-lg text-center border border-red-100">
+                              <div className="text-xs text-red-600 font-bold uppercase mb-1">EOD</div>
+                              <div className="text-2xl font-bold text-red-900">{activeResult.return.sourceCounts?.eod} <span className="text-sm text-red-600/70 font-normal">筆</span></div>
+                              <div className="text-sm font-semibold text-red-800 mt-1 pt-1 border-t border-red-200">
+                                  ${activeResult.return.sourceAmounts?.eod?.toLocaleString()}
+                              </div>
+                          </div>
+                          <div className="bg-rose-50 p-3 rounded-lg text-center border border-rose-100">
+                              <div className="text-xs text-rose-600 font-bold uppercase mb-1">報表</div>
+                              <div className="text-2xl font-bold text-rose-900">{activeResult.return.sourceCounts?.report} <span className="text-sm text-rose-600/70 font-normal">筆</span></div>
+                              <div className="text-sm font-semibold text-rose-800 mt-1 pt-1 border-t border-rose-200">
+                                  ${activeResult.return.sourceAmounts?.report?.toLocaleString()}
+                              </div>
+                          </div>
+                      </div>
+                    </Card>
+                    <Card><DetailTable details={activeResult.return.details} type="Return" platform={activePlatform} /></Card>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         ) : (
           <div className="text-center py-20 text-gray-400">
