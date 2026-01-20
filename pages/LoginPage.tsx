@@ -57,7 +57,6 @@ export default function LoginPage() {
       </div>
       <footer className="mt-8 text-gray-400 text-xs text-center">
         <p>Made by IS PM Nick</p>
-        <p className="mt-1 opacity-50">僅限 @91app.com / @nine-yi.com 員工登入</p>
       </footer>
     </div>
   );
