@@ -1,5 +1,5 @@
 {
-  "name": "Adidas Reconciliation Dashboard",
+  "name": "ADS Report Verifier",
   "description": "A web interface for verifying sales reports against EOD data across multiple platforms (Brand Site, Shopee, Momo, Yahoo), highlighting discrepancies in shipping and return amounts.",
   "requestFramePermissions": []
 }
