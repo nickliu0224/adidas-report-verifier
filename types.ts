@@ -21,14 +21,16 @@ export interface PlatformResult {
         unmatchedCount: number;
         diffCount: number;
         details: ComparisonRow[];
-        sourceCounts?: { eod: number; report: number }; // 新增統計
+        sourceCounts?: { eod: number; report: number }; // 筆數統計
+        sourceAmounts?: { eod: number; report: number }; // 金額統計 (新增)
     };
     return: {
         status: 'OK' | 'WARNING' | 'ERROR';
         unmatchedCount: number;
         diffCount: number;
         details: ComparisonRow[];
-        sourceCounts?: { eod: number; report: number }; // 新增統計
+        sourceCounts?: { eod: number; report: number }; // 筆數統計
+        sourceAmounts?: { eod: number; report: number }; // 金額統計 (新增)
     };
     processedAt: string;
 }

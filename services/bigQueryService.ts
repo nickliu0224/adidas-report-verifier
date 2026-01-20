@@ -51,9 +51,20 @@ const runComparison = (
   leftCol: string, 
   rightCol: string, 
   tsCol: string | null = null
-): { status: 'OK'|'WARNING'|'ERROR', unmatchedCount: number, diffCount: number, details: ComparisonRow[], sourceCounts: {eod: number, report: number} } => {
+): { 
+    status: 'OK'|'WARNING'|'ERROR', 
+    unmatchedCount: number, 
+    diffCount: number, 
+    details: ComparisonRow[], 
+    sourceCounts: {eod: number, report: number},
+    sourceAmounts: {eod: number, report: number}
+} => {
   
   const map = new Map<string, any>();
+  
+  // 計算總金額
+  const totalLeft = leftData.reduce((sum, row) => sum + (parseFloat(row[leftCol] || '0') || 0), 0);
+  const totalRight = rightData.reduce((sum, row) => sum + (parseFloat(row[rightCol] || '0') || 0), 0);
 
   leftData.forEach(row => {
     const k = String(row[key]);
@@ -113,7 +124,8 @@ const runComparison = (
     unmatchedCount,
     diffCount,
     details,
-    sourceCounts: { eod: leftData.length, report: rightData.length }
+    sourceCounts: { eod: leftData.length, report: rightData.length },
+    sourceAmounts: { eod: Math.round(totalLeft), report: Math.round(totalRight) }
   };
 };
 
@@ -224,8 +236,14 @@ export const runReconciliation = async (
         console.error(`Error processing ${platform}:`, e);
         results.push({
             platform: platform as Platform,
-            shipment: { status: 'ERROR', unmatchedCount: 0, diffCount: 0, details: [], sourceCounts: {eod: 0, report: 0} },
-            return: { status: 'ERROR', unmatchedCount: 0, diffCount: 0, details: [], sourceCounts: {eod: 0, report: 0} },
+            shipment: { 
+                status: 'ERROR', unmatchedCount: 0, diffCount: 0, details: [], 
+                sourceCounts: {eod: 0, report: 0}, sourceAmounts: {eod: 0, report: 0} 
+            },
+            return: { 
+                status: 'ERROR', unmatchedCount: 0, diffCount: 0, details: [], 
+                sourceCounts: {eod: 0, report: 0}, sourceAmounts: {eod: 0, report: 0}
+            },
             processedAt: new Date().toISOString()
         });
         // 如果是特定的權限錯誤，則向上拋出

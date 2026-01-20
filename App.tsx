@@ -228,12 +228,12 @@ export default function App() {
 
         {/* Right: Account Info */}
         <div className="w-1/4 flex flex-col items-end gap-0.5">
-          <div className="text-[10px] text-gray-400 font-medium truncate max-w-full">
+          <div className="text-xs text-gray-400 font-medium truncate max-w-full">
             {user.email}
           </div>
           <button 
             onClick={() => signOut(auth)} 
-            className="text-[10px] text-gray-500 hover:text-white underline transition-colors"
+            className="text-xs text-gray-500 hover:text-white underline transition-colors"
           >
             Logout
           </button>
@@ -269,12 +269,18 @@ export default function App() {
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl">
                         <div className="bg-blue-50 p-3 rounded-lg text-center border border-blue-100">
-                            <div className="text-xs text-blue-600 font-bold uppercase mb-1">EOD 筆數</div>
-                            <div className="text-2xl font-bold text-blue-900">{activeResult.shipment.sourceCounts?.eod}</div>
+                            <div className="text-xs text-blue-600 font-bold uppercase mb-1">EOD</div>
+                            <div className="text-2xl font-bold text-blue-900">{activeResult.shipment.sourceCounts?.eod} <span className="text-sm text-blue-600/70 font-normal">筆</span></div>
+                            <div className="text-sm font-semibold text-blue-800 mt-1 pt-1 border-t border-blue-200">
+                                ${activeResult.shipment.sourceAmounts?.eod?.toLocaleString()}
+                            </div>
                         </div>
                         <div className="bg-indigo-50 p-3 rounded-lg text-center border border-indigo-100">
-                            <div className="text-xs text-indigo-600 font-bold uppercase mb-1">報表筆數</div>
-                            <div className="text-2xl font-bold text-indigo-900">{activeResult.shipment.sourceCounts?.report}</div>
+                            <div className="text-xs text-indigo-600 font-bold uppercase mb-1">報表</div>
+                            <div className="text-2xl font-bold text-indigo-900">{activeResult.shipment.sourceCounts?.report} <span className="text-sm text-indigo-600/70 font-normal">筆</span></div>
+                            <div className="text-sm font-semibold text-indigo-800 mt-1 pt-1 border-t border-indigo-200">
+                                ${activeResult.shipment.sourceAmounts?.report?.toLocaleString()}
+                            </div>
                         </div>
                     </div>
                   </Card>
@@ -290,12 +296,18 @@ export default function App() {
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl">
                         <div className="bg-red-50 p-3 rounded-lg text-center border border-red-100">
-                            <div className="text-xs text-red-600 font-bold uppercase mb-1">EOD 筆數</div>
-                            <div className="text-2xl font-bold text-red-900">{activeResult.return.sourceCounts?.eod}</div>
+                            <div className="text-xs text-red-600 font-bold uppercase mb-1">EOD</div>
+                            <div className="text-2xl font-bold text-red-900">{activeResult.return.sourceCounts?.eod} <span className="text-sm text-red-600/70 font-normal">筆</span></div>
+                            <div className="text-sm font-semibold text-red-800 mt-1 pt-1 border-t border-red-200">
+                                ${activeResult.return.sourceAmounts?.eod?.toLocaleString()}
+                            </div>
                         </div>
                         <div className="bg-rose-50 p-3 rounded-lg text-center border border-rose-100">
-                            <div className="text-xs text-rose-600 font-bold uppercase mb-1">報表筆數</div>
-                            <div className="text-2xl font-bold text-rose-900">{activeResult.return.sourceCounts?.report}</div>
+                            <div className="text-xs text-rose-600 font-bold uppercase mb-1">報表</div>
+                            <div className="text-2xl font-bold text-rose-900">{activeResult.return.sourceCounts?.report} <span className="text-sm text-rose-600/70 font-normal">筆</span></div>
+                            <div className="text-sm font-semibold text-rose-800 mt-1 pt-1 border-t border-rose-200">
+                                ${activeResult.return.sourceAmounts?.report?.toLocaleString()}
+                            </div>
                         </div>
                     </div>
                   </Card>
