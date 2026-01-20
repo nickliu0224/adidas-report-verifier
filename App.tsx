@@ -211,12 +211,15 @@ export default function App() {
 
         {/* Center: Controls */}
         <div className="w-2/4 flex justify-center items-center gap-4">
-          <input 
-            type="date" 
-            value={targetDate} 
-            onChange={e => setTargetDate(e.target.value)} 
-            className="bg-gray-800 border-none rounded px-3 py-1.5 text-sm outline-none focus:ring-1 focus:ring-white min-w-[150px]"
-          />
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-gray-300">資料日期</span>
+            <input 
+              type="date" 
+              value={targetDate} 
+              onChange={e => setTargetDate(e.target.value)} 
+              className="bg-gray-800 border-none rounded px-3 py-1.5 text-sm outline-none focus:ring-1 focus:ring-white min-w-[150px]"
+            />
+          </div>
           <button 
             onClick={handleRunCheck} 
             disabled={loading} 
