@@ -114,10 +114,10 @@ const SummaryCards = ({ results, activePlatform, onSelect }: { results: Platform
             
             {!isOk && (
               <div className="mt-1">
-                 <div className="text-lg font-bold text-red-600 leading-none mb-1">{totalIssues} <span className="text-[10px] font-medium text-red-400 uppercase">Issues</span></div>
-                 <div className="flex flex-wrap gap-1 text-[10px] font-mono text-gray-500">
-                    {shipIssues > 0 && <span className="bg-red-50 text-red-700 px-1 py-0.5 rounded border border-red-100">Ship: {shipIssues}</span>}
-                    {retIssues > 0 && <span className="bg-orange-50 text-orange-700 px-1 py-0.5 rounded border border-orange-100">Ret: {retIssues}</span>}
+                 <div className="text-lg font-bold text-red-600 leading-none mb-1">{totalIssues} <span className="text-xs font-medium text-red-400">筆異常</span></div>
+                 <div className="flex flex-wrap gap-1 text-[10px] text-gray-500">
+                    {shipIssues > 0 && <span className="bg-red-50 text-red-700 px-1.5 py-0.5 rounded border border-red-100">出貨: {shipIssues}</span>}
+                    {retIssues > 0 && <span className="bg-orange-50 text-orange-700 px-1.5 py-0.5 rounded border border-orange-100">退貨: {retIssues}</span>}
                  </div>
               </div>
             )}

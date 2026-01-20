@@ -6,8 +6,14 @@ import { User } from 'firebase/auth';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 
-// Simple wrapper to protect routes
-const PrivateRoute = ({ children, user, loading }: { children: React.ReactNode, user: User | null, loading: boolean }) => {
+// Defined interface for props to fix type error
+interface PrivateRouteProps {
+  children: React.ReactNode;
+  user: User | null;
+  loading: boolean;
+}
+
+const PrivateRoute = ({ children, user, loading }: PrivateRouteProps) => {
   if (loading) return <div className="min-h-screen flex items-center justify-center text-gray-400">Loading auth...</div>;
   if (!user) return <Navigate to="/login" replace />;
   return <>{children}</>;
