@@ -8,7 +8,7 @@ import DashboardPage from './pages/DashboardPage';
 
 // Defined interface for props to fix type error
 interface PrivateRouteProps {
-  children: React.ReactNode;
+  children?: React.ReactNode;
   user: User | null;
   loading: boolean;
 }
