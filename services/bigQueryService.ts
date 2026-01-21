@@ -77,7 +77,6 @@ const runComparison = (
   const totalLeft = leftData.reduce((sum, row) => sum + (parseFloat(row[leftCol] || '0') || 0), 0);
   const totalRight = rightData.reduce((sum, row) => sum + (parseFloat(row[rightCol] || '0') || 0), 0);
 
-  // Populate from Left Data (EOD)
   leftData.forEach(row => {
     const k = String(row[key]);
     if (!map.has(k)) map.set(k, { key: k });
@@ -85,7 +84,6 @@ const runComparison = (
     item.leftValue = parseFloat(row[leftCol] || '0');
   });
 
-  // Populate from Right Data (Report)
   rightData.forEach(row => {
     const k = String(row[key]);
     if (!map.has(k)) map.set(k, { key: k });
@@ -105,16 +103,11 @@ const runComparison = (
 
     let status: ComparisonRow['status'] = 'MATCH';
 
-    // Logic: 
-    // Left = EOD, Right = Report
-    // If Left != 0 and Right == 0 -> Exists in EOD, Missing in Report -> MISSING_RIGHT (Only EOD)
-    // If Left == 0 and Right != 0 -> Exists in Report, Missing in EOD -> MISSING_LEFT (Only Report)
-    
     if (leftVal !== 0 && rightVal === 0) {
         status = 'MISSING_RIGHT';
     } else if (leftVal === 0 && rightVal !== 0) {
         status = 'MISSING_LEFT';
-    } else if (leftVal !== 0 && rightVal !== 0 && Math.abs(diff) > 5) { // Threshold > 5
+    } else if (leftVal !== 0 && rightVal !== 0 && Math.abs(diff) > 5) { // 同步 Python: abs > 5
         status = 'DIFF';
     }
 
@@ -183,9 +176,8 @@ export const runReconciliation = async (
         ship_join = `(ShipData.Platform = '品牌官網' AND ShipData.TotalPayment = EODData.Qty * EODData.RRP - EODData.DiscountPrice)`;
     }
 
-    // --- 出貨 SQL ---
-    // Left Join: ShipData (Report) -> EODData.
-    // If OrderAmount is null, it means Missing in EOD (Only Report).
+    // --- 出貨 SQL (同步 Python main() 中的語法) ---
+    // Added PlatformAmount to SELECT to enable comparison in one go
     const ship_sales_sql = `
     WITH ShipData_Agg AS (
         SELECT ShopId, Platform, SalesOrderCode, TgOrderCode, TransactionCode, SkuId, ShippingDateTime, OrderCode,
@@ -210,8 +202,8 @@ export const runReconciliation = async (
     GROUP BY 1
     `;
 
-    // --- 退貨 SQL ---
-    // Left Join: ShipData (Report) -> EODData.
+    // --- 退貨 SQL (同步 Python main() 中的語法) ---
+    // Added PlatformAmount to SELECT to enable comparison in one go
     const ret_join = platform !== Platform.BRAND_SITE 
         ? ship_join 
         : `(ShipData.Platform = '品牌官網' AND (ShipData.TransactionCode = REPLACE(IF(INSTR(EODData.TransactionCode, '-') > 0, SPLIT(EODData.TransactionCode, '-')[OFFSET(0)], EODData.TransactionCode), 'R', '') OR ShipData.TransactionCode = IF(INSTR(EODData.TransactionCode, '-') > 0, SPLIT(EODData.TransactionCode, '-')[OFFSET(0)], EODData.TransactionCode)) AND ABS(ShipData.TotalPayment - (EODData.Qty * EODData.RRP + EODData.DiscountPrice)) < 1)`;
@@ -245,7 +237,6 @@ export const runReconciliation = async (
 
     // Run Comparison
     // Shipment: Left = OrderAmount (EOD), Right = PlatformAmount (Report)
-    // If OrderAmount is null (from left join), it parses as 0 -> MISSING_LEFT (Only Report).
     const shipResult = runComparison(
         shipRows, 
         shipRows, 
