@@ -22,24 +22,13 @@ const runBigQueryQuery = async (sql: string, accessToken: string) => {
   });
 
   if (!response.ok) {
-    let err = {};
-    try {
-        err = await response.json();
-    } catch (e) {
-        console.error("Failed to parse error response", e);
-    }
+    const err = await response.json();
     console.error("[BigQuery API Error]", err);
-
-    // Handle token expiration
-    if (response.status === 401) {
-        throw new Error("SESSION_EXPIRED");
-    }
-
     // 針對權限不足 (403) 提供特定中文提示
     if (response.status === 403) {
       throw new Error("你的帳號沒有查 BQ 的權限啦");
     }
-    throw new Error((err as any).error?.message || 'BigQuery Request Failed');
+    throw new Error(err.error?.message || 'BigQuery Request Failed');
   }
 
   const data = await response.json();
@@ -177,7 +166,6 @@ export const runReconciliation = async (
     }
 
     // --- 出貨 SQL (同步 Python main() 中的語法) ---
-    // Added PlatformAmount to SELECT to enable comparison in one go
     const ship_sales_sql = `
     WITH ShipData_Agg AS (
         SELECT ShopId, Platform, SalesOrderCode, TgOrderCode, TransactionCode, SkuId, ShippingDateTime, OrderCode,
@@ -191,8 +179,7 @@ export const runReconciliation = async (
     SELECT ${id_expr} AS TG_ID, STRING_AGG(DISTINCT ShipData.SalesOrderCode, ', ') AS TS_IDs,
         CAST(ROUND(SUM(CASE WHEN CAST((EODData.Qty * EODData.RRP - EODData.DiscountPrice) AS INT64) < 0
             THEN CAST((EODData.Qty * EODData.RRP - EODData.DiscountPrice) AS INT64) * -1
-            ELSE CAST((EODData.Qty * EODData.RRP - EODData.DiscountPrice) AS INT64) END) / 1.05) AS INT64) AS OrderAmount,
-        CAST(ROUND(SUM(ShipData.TotalPayment)) AS INT64) AS PlatformAmount
+            ELSE CAST((EODData.Qty * EODData.RRP - EODData.DiscountPrice) AS INT64) END) / 1.05) AS INT64) AS OrderAmount
     FROM ShipData_Agg AS ShipData
     LEFT JOIN \`${PROJECT_ID}.${DATASET_ID}.Adidas_EOD_Data_ht\` AS EODData
     ON ShipData.SkuId = CONCAT(EODData.ArticleNo, EODData.SizeIndex) AND ShipData.Platform = EODData.Platform
@@ -203,7 +190,6 @@ export const runReconciliation = async (
     `;
 
     // --- 退貨 SQL (同步 Python main() 中的語法) ---
-    // Added PlatformAmount to SELECT to enable comparison in one go
     const ret_join = platform !== Platform.BRAND_SITE 
         ? ship_join 
         : `(ShipData.Platform = '品牌官網' AND (ShipData.TransactionCode = REPLACE(IF(INSTR(EODData.TransactionCode, '-') > 0, SPLIT(EODData.TransactionCode, '-')[OFFSET(0)], EODData.TransactionCode), 'R', '') OR ShipData.TransactionCode = IF(INSTR(EODData.TransactionCode, '-') > 0, SPLIT(EODData.TransactionCode, '-')[OFFSET(0)], EODData.TransactionCode)) AND ABS(ShipData.TotalPayment - (EODData.Qty * EODData.RRP + EODData.DiscountPrice)) < 1)`;
@@ -219,8 +205,7 @@ export const runReconciliation = async (
         GROUP BY 1,2,3,4,5,6,7
     )
     SELECT ${platform !== Platform.BRAND_SITE ? id_expr : 'ShipData.SalesOrderCode'} AS TS_ID,
-        CAST(ROUND(SUM(EODData.Qty * EODData.RRP + EODData.DiscountPrice) / 1.05) AS INT64) AS RetAmount,
-        CAST(ROUND(SUM(ShipData.TotalPayment)) AS INT64) AS PlatformAmount
+        CAST(ROUND(SUM(EODData.Qty * EODData.RRP + EODData.DiscountPrice) / 1.05) AS INT64) AS RetAmount
     FROM ShipData_Ret AS ShipData
     LEFT JOIN \`${PROJECT_ID}.${DATASET_ID}.Adidas_EOD_Data_ht\` AS EODData
     ON ShipData.SkuId = CONCAT(EODData.ArticleNo, EODData.SizeIndex) AND ShipData.Platform = EODData.Platform
@@ -229,39 +214,43 @@ export const runReconciliation = async (
     GROUP BY 1
     `;
 
-    // Run Queries
-    const [shipRows, retRows] = await Promise.all([
-        runBigQueryQuery(ship_sales_sql, accessToken),
-        runBigQueryQuery(ret_sales_sql, accessToken)
-    ]);
+    // --- EOD 基礎 SQL ---
+    const ship_eod_sql = `SELECT ${eod_id_expr} AS TG_ID, CAST(ROUND(SUM(Qty * RRP - DiscountPrice) / 1.05) AS INT64) AS EOD_Amount FROM \`${PROJECT_ID}.${DATASET_ID}.Adidas_EOD_Data_ht\` WHERE BQUpdatedDateTime >= TIMESTAMP('${date}') AND BQUpdatedDateTime < TIMESTAMP('${nextDayStr}') AND Platform = '${platform}' AND Qty > 0 GROUP BY 1`;
+    const ret_eod_sql = `SELECT ${platform !== Platform.BRAND_SITE ? eod_id_expr : 'SalesOrderCode'} AS TS_ID, CAST(ROUND(SUM(Qty * RRP + DiscountPrice) / 1.05) AS INT64) AS EOD_RetAmount FROM \`${PROJECT_ID}.${DATASET_ID}.Adidas_EOD_Data_ht\` WHERE BQUpdatedDateTime >= TIMESTAMP('${date}') AND BQUpdatedDateTime < TIMESTAMP('${nextDayStr}') AND Platform = '${platform}' AND Qty < 0 GROUP BY 1`;
 
-    // Run Comparison
-    // Shipment: Left = OrderAmount (EOD), Right = PlatformAmount (Report)
-    const shipResult = runComparison(
-        shipRows, 
-        shipRows, 
-        'TG_ID', 
-        'OrderAmount', 
-        'PlatformAmount', 
-        'TS_IDs'
-    );
+    try {
+        const [shipSales, shipEod, retSales, retEod] = await Promise.all([
+            runBigQueryQuery(ship_sales_sql, accessToken),
+            runBigQueryQuery(ship_eod_sql, accessToken),
+            runBigQueryQuery(ret_sales_sql, accessToken),
+            runBigQueryQuery(ret_eod_sql, accessToken)
+        ]);
 
-    // Return: Left = RetAmount (EOD), Right = PlatformAmount (Report)
-    const retResult = runComparison(
-        retRows, 
-        retRows, 
-        'TS_ID', 
-        'RetAmount', 
-        'PlatformAmount'
-    );
-
-    results.push({
-        platform,
-        shipment: shipResult,
-        return: retResult,
-        processedAt: new Date().toISOString()
-    });
+        results.push({
+            platform: platform as Platform,
+            shipment: runComparison(shipEod, shipSales, 'TG_ID', 'EOD_Amount', 'OrderAmount', 'TS_IDs'),
+            return: runComparison(retEod, retSales, 'TS_ID', 'EOD_RetAmount', 'RetAmount'),
+            processedAt: new Date().toISOString()
+        });
+    } catch (e: any) {
+        console.error(`Error processing ${platform}:`, e);
+        results.push({
+            platform: platform as Platform,
+            shipment: { 
+                status: 'ERROR', unmatchedCount: 0, diffCount: 0, details: [], 
+                sourceCounts: {eod: 0, report: 0}, sourceAmounts: {eod: 0, report: 0} 
+            },
+            return: { 
+                status: 'ERROR', unmatchedCount: 0, diffCount: 0, details: [], 
+                sourceCounts: {eod: 0, report: 0}, sourceAmounts: {eod: 0, report: 0}
+            },
+            processedAt: new Date().toISOString()
+        });
+        // 如果是特定的權限錯誤，則向上拋出
+        if (e.message === "你的帳號沒有查 BQ 的權限啦") {
+          throw e;
+        }
+    }
   }
-
   return results;
 };

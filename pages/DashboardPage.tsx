@@ -157,14 +157,6 @@ export default function DashboardPage({ user }: { user: any }) {
       });
       setResults(data);
     } catch (e: any) { 
-      if (e.message === 'SESSION_EXPIRED') {
-        alert("BigQuery 連線已失效 (可能是閒置太久)，請重新登入。");
-        sessionStorage.removeItem('bq_access_token');
-        await signOut(auth);
-        // The auth listener in App.tsx will handle the redirect to login
-        return;
-      }
-      
       setErrorMsg(e.message);
       alert(e.message); 
     }
