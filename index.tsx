@@ -2,7 +2,6 @@ import './services/firebase'; // 💡 關鍵：必須放在第一行，確保 Fi
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
-import './index.css'; // 如果你有 CSS 檔案的話
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
