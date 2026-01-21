@@ -292,7 +292,7 @@ export default function DashboardPage({ user }: { user: any }) {
           <button 
             onClick={handleRunCheck} 
             disabled={loading} 
-            className="bg-white text-black px-6 py-1.5 rounded text-sm font-bold hover:bg-gray-200 disabled:opacity-50 transition-colors"
+            className="bg-yellow-400 text-black px-6 py-1.5 rounded text-sm font-bold hover:bg-yellow-500 disabled:opacity-50 transition-colors"
           >
             {loading ? 'Running...' : 'Run'}
           </button>
