@@ -157,6 +157,11 @@ export default function DashboardPage({ user }: { user: any }) {
       });
       setResults(data);
     } catch (e: any) { 
+      if (e.message === "TOKEN_EXPIRED") {
+          alert("閒置太久導致權限失效，請重新登入");
+          await signOut(auth);
+          return;
+      }
       setErrorMsg(e.message);
       alert(e.message); 
     }

@@ -22,8 +22,14 @@ const runBigQueryQuery = async (sql: string, accessToken: string) => {
   });
 
   if (!response.ok) {
-    const err = await response.json();
+    // 優先檢查 Token 是否過期 (401)
+    if (response.status === 401) {
+        throw new Error("TOKEN_EXPIRED");
+    }
+
+    const err = await response.json().catch(() => ({}));
     console.error("[BigQuery API Error]", err);
+    
     // 針對權限不足 (403) 提供特定中文提示
     if (response.status === 403) {
       throw new Error("你的帳號沒有查 BQ 的權限啦");
@@ -246,8 +252,8 @@ export const runReconciliation = async (
             },
             processedAt: new Date().toISOString()
         });
-        // 如果是特定的權限錯誤，則向上拋出
-        if (e.message === "你的帳號沒有查 BQ 的權限啦") {
+        // 如果是特定的權限錯誤或 Token 過期，則向上拋出，讓前端處理登出
+        if (e.message === "你的帳號沒有查 BQ 的權限啦" || e.message === "TOKEN_EXPIRED") {
           throw e;
         }
     }
