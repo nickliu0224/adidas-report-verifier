@@ -1,7 +1,7 @@
-import { initializeApp } from "firebase/app";
+import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
-import { getAnalytics } from "firebase/analytics";
+import { getAnalytics, isSupported } from "firebase/analytics";
 
 const firebaseConfig = {
   apiKey: "AIzaSyALSxku0E37Jw3gj50PvBpAbXZXIc5CW_g",
@@ -13,13 +13,24 @@ const firebaseConfig = {
   measurementId: "G-BG6EWPSRW0"
 };
 
-const app = initializeApp(firebaseConfig);
+// 1. 初始化 Firebase App (防止重複初始化)
+// 如果已經有初始化過的 app 就直接用，沒有才初始化
+const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
+
+// 2. 初始化服務並明確傳入 app
 const auth = getAuth(app);
 const db = getFirestore(app);
-const analytics = getAnalytics(app);
 
-// Configure Google Provider with BigQuery scopes
+// 3. Analytics 處理 (加上支援度檢查，避免在某些環境報錯)
+isSupported().then((supported) => {
+  if (supported) {
+    getAnalytics(app);
+  }
+});
+
+// 4. 設定 Google Provider
 const googleProvider = new GoogleAuthProvider();
 googleProvider.addScope('https://www.googleapis.com/auth/bigquery.readonly');
 
-export { auth, db, googleProvider };
+// 5. 匯出實例
+export { app, auth, db, googleProvider };
