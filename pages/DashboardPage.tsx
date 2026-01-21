@@ -4,9 +4,11 @@ import { PlatformResult, Platform, ComparisonRow } from '../types';
 import { signOut } from 'firebase/auth';
 import { auth } from '../services/firebase';
 
-// --- UI Components (Copied from App.tsx to keep self-contained) ---
+// --- UI Components ---
+
+// Updated Card to not enforce overflow-hidden by default, allowing tooltips to popup.
 const Card = ({ children, className = '' }: { children?: React.ReactNode; className?: string }) => (
-  <div className={`bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden ${className}`}>
+  <div className={`bg-white rounded-xl shadow-sm border border-gray-200 ${className}`}>
     {children}
   </div>
 );
@@ -34,6 +36,75 @@ const Badge = ({ status }: { status: string }) => {
     ERROR: 'Fail'
   };
   return <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${styles[status] || 'bg-gray-100 text-gray-800'}`}>{label[status] || status}</span>;
+};
+
+// Tooltip component for explaining logic
+const LogicTooltip = ({ platform, type }: { platform: Platform, type: 'Shipment' | 'Return' }) => {
+  const getContent = () => {
+    const isShipment = type === 'Shipment';
+    const commonEodCalc = isShipment ? "(Qty * RRP - Discount) / 1.05" : "(Qty * RRP + Discount) / 1.05";
+    
+    switch (platform) {
+      case Platform.BRAND_SITE:
+        return (
+          <div className="space-y-2 text-left">
+            <p><strong>關聯邏輯 (Join):</strong> <span className="font-mono text-xs bg-gray-100 p-0.5 rounded text-red-600">TransactionCode</span></p>
+            <ul className="list-disc pl-4 text-xs space-y-1 text-gray-600">
+               <li>比對交易代碼 (去除 -1, -2 等後綴)。</li>
+               {isShipment ? (
+                 <li>額外條件：報表金額必須等於 EOD 計算金額。</li>
+               ) : (
+                 <li>額外條件：去除 'R' 後綴，且金額差異 &lt; 1。</li>
+               )}
+            </ul>
+            <p className="mt-2"><strong>金額公式 (Amount):</strong></p>
+            <code className="block bg-gray-100 p-1 rounded text-xs text-gray-700">{commonEodCalc}</code>
+          </div>
+        );
+      case Platform.SHOPEE:
+        return (
+          <div className="space-y-2 text-left">
+            <p><strong>關聯邏輯 (Join):</strong> <span className="font-mono text-xs bg-gray-100 p-0.5 rounded text-red-600">SalesOrderCode</span></p>
+             <p className="text-xs text-gray-600">單號完全一致 (Exact Match)。</p>
+             <p className="mt-2"><strong>金額公式 (Amount):</strong></p>
+            <code className="block bg-gray-100 p-1 rounded text-xs text-gray-700">{commonEodCalc}</code>
+          </div>
+        );
+      case Platform.MOMO:
+        return (
+          <div className="space-y-2 text-left">
+            <p><strong>關聯邏輯 (Join):</strong> <span className="font-mono text-xs bg-gray-100 p-0.5 rounded text-red-600">LEFT(SalesOrderCode, 18)</span></p>
+             <p className="text-xs text-gray-600">取訂單編號前 18 碼進行比對。</p>
+             <p className="mt-2"><strong>金額公式 (Amount):</strong></p>
+            <code className="block bg-gray-100 p-1 rounded text-xs text-gray-700">{commonEodCalc}</code>
+          </div>
+        );
+       case Platform.YAHOO:
+        return (
+          <div className="space-y-2 text-left">
+            <p><strong>關聯邏輯 (Join):</strong> <span className="font-mono text-xs bg-gray-100 p-0.5 rounded text-red-600">LEFT(SalesOrderCode, 15)</span></p>
+             <p className="text-xs text-gray-600">取訂單編號前 15 碼進行比對。</p>
+             <p className="mt-2"><strong>金額公式 (Amount):</strong></p>
+            <code className="block bg-gray-100 p-1 rounded text-xs text-gray-700">{commonEodCalc}</code>
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <div className="group relative inline-flex items-center ml-2 align-middle cursor-help">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 text-gray-400 hover:text-blue-500 transition-colors">
+        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM8.94 6.94a.75.75 0 11-1.061-1.061 3 3 0 112.871 5.026v.345a.75.75 0 01-1.5 0v-.5c0-.72.57-1.172 1.081-1.287A1.5 1.5 0 108.94 6.94zM10 15a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+      </svg>
+      {/* Tooltip Popup */}
+      <div className="invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all duration-200 absolute left-1/2 -translate-x-1/2 bottom-full mb-3 w-72 bg-white text-gray-800 text-sm rounded-lg shadow-xl border border-gray-200 p-4 z-50">
+         <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-white border-b border-r border-gray-200 rotate-45"></div>
+         {getContent()}
+      </div>
+    </div>
+  );
 };
 
 const DetailTable = ({ details, type, platform }: { details: ComparisonRow[]; type: 'Shipment' | 'Return'; platform: Platform }) => {
@@ -91,7 +162,7 @@ const SummaryCards = ({ results, activePlatform, onSelect }: { results: Platform
           <button
             key={r.platform}
             onClick={() => onSelect(r.platform)}
-            className={`relative p-3 rounded-lg text-left transition-all border group flex flex-col justify-between h-full min-h-[80px] ${
+            className={`relative p-3 rounded-lg text-left transition-allQH border group flex flex-col justify-between h-full min-h-[80px] ${
               isActive 
                 ? 'border-black ring-1 ring-black shadow-md bg-white' 
                 : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm'
@@ -267,7 +338,10 @@ export default function DashboardPage({ user }: { user: any }) {
                   <div className="space-y-4">
                     <Card className="p-5 border-t-4 border-t-blue-500 bg-blue-50/20">
                       <div className="flex justify-between items-start mb-4">
-                          <h3 className="font-bold text-gray-700 text-lg">出貨比對 (Shipment)</h3>
+                          <h3 className="font-bold text-gray-700 text-lg flex items-center">
+                              出貨比對 (Shipment)
+                              <LogicTooltip platform={activePlatform} type="Shipment" />
+                          </h3>
                           <Badge status={activeResult.shipment.status} />
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl">
@@ -287,14 +361,17 @@ export default function DashboardPage({ user }: { user: any }) {
                           </div>
                       </div>
                     </Card>
-                    <Card><DetailTable details={activeResult.shipment.details} type="Shipment" platform={activePlatform} /></Card>
+                    <Card className="overflow-hidden"><DetailTable details={activeResult.shipment.details} type="Shipment" platform={activePlatform} /></Card>
                   </div>
 
                   {/* Return Section */}
                   <div className="space-y-4">
                     <Card className="p-5 border-t-4 border-t-red-500 bg-red-50/20">
                       <div className="flex justify-between items-start mb-4">
-                          <h3 className="font-bold text-gray-700 text-lg">退貨比對 (Return)</h3>
+                          <h3 className="font-bold text-gray-700 text-lg flex items-center">
+                              退貨比對 (Return)
+                              <LogicTooltip platform={activePlatform} type="Return" />
+                          </h3>
                           <Badge status={activeResult.return.status} />
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl">
@@ -314,7 +391,7 @@ export default function DashboardPage({ user }: { user: any }) {
                           </div>
                       </div>
                     </Card>
-                    <Card><DetailTable details={activeResult.return.details} type="Return" platform={activePlatform} /></Card>
+                    <Card className="overflow-hidden"><DetailTable details={activeResult.return.details} type="Return" platform={activePlatform} /></Card>
                   </div>
                 </div>
               )}
